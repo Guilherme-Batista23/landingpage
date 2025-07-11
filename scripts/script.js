@@ -52,60 +52,43 @@ function sendMessage() {
 }
 
 // Enviar formulário
-document.getElementById('lead-form').addEventListener('submit', async function (e) {
+document.getElementById('lead-form').addEventListener('submit', function (e) {
   e.preventDefault();
 
   const nome = document.getElementById('nome').value;
   const email = document.getElementById('email').value;
   const numero = document.getElementById('numero').value;
 
-  try {
-    const resposta = await fetch("https://n8n.srv880765.hstgr.cloud/webhook/receber-lead", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, mensagem: numero })
-    });
+  // Abre nova aba ANTES de qualquer código assíncrono
+  const win = window.open("https://mpago.la/2TSij5j", "_blank");
 
-    await resposta.json();
+  // Previne bloqueios
+  if (!win) {
+    alert("Por favor, permita pop-ups para continuar com o pagamento.");
+    return;
+  }
 
-    alert(`Obrigado, ${nome}! Agora você será redirecionado para efetuar o pagamento e entrar no grupo.`);
+  // Agora executa o resto (envio ao N8N, chat etc.)
+  fetch("https://n8n.srv880765.hstgr.cloud/webhook/receber-lead", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nome, email, mensagem: numero })
+  })
+  .then(() => {
+    alert(`Obrigado, ${nome}! Enviamos seus dados com sucesso.`);
 
+    // Scroll até o chat
     document.getElementById("ia").scrollIntoView({ behavior: 'smooth' });
 
-    // Opcional: enviar a mesma info novamente, reforçando na Supabase
-    await fetch("https://n8n.srv880765.hstgr.cloud/webhook/receber-lead", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, mensagem: numero })
-    });
-
-    // Redirecionar para o pagamento
-    window.open("https://mpago.la/2TSij5j", "_blank");
-
-  } catch (error) {
+    // (opcional) Mensagem da IA
+    setTimeout(() => {
+      addMessage(`Olá ${nome}! Que bom ter você aqui. Qual sua principal dúvida sobre emagrecimento?`, 'bot');
+    }, 500);
+  })
+  .catch((error) => {
     alert('Erro ao enviar seus dados. Tente novamente mais tarde.');
     console.error(error);
-  }
-});
-
-// Clique no botão de pagamento também envia o lead (reforçando Supabase)
-document.querySelector('#botao-pagamento a').addEventListener('click', async function () {
-  const nome = this.parentElement.dataset.nome;
-  const email = this.parentElement.dataset.email;
-  const numero = this.parentElement.dataset.numero;
-
-  try {
-    await fetch("https://n8n.srv880765.hstgr.cloud/webhook/receber-lead", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nome, email, mensagem: numero })
-    });
-
-    // Não precisa fazer nada aqui, apenas envia o lead de novo.
-
-  } catch (error) {
-    console.error('Erro ao reenviar lead no clique do botão:', error);
-  }
+  });
 });
 
 // Efeito visual do cursor
